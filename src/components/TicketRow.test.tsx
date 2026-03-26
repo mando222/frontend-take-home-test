@@ -33,7 +33,7 @@ describe('TicketRow', () => {
     expect(screen.getByRole('button', { name: /complete/i })).toBeInTheDocument();
   });
 
-  it('shows "User null" when assigneeId is null', () => {
+  it('shows "Unassigned" when assigneeId is null', () => {
     const ticket: Ticket = {
       id: 3,
       description: 'Replace keyboard',
@@ -51,7 +51,8 @@ describe('TicketRow', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/User null/)).toBeInTheDocument();
+    expect(screen.getByText(/Unassigned/)).toBeInTheDocument();
+    expect(screen.queryByText(/User null/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reopen/i })).toBeInTheDocument();
   });
 

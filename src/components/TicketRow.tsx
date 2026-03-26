@@ -16,7 +16,7 @@ export function TicketRow({ ticket, users, onToggleStatus }: TicketRowProps) {
         <strong>{ticket.description}</strong>
       </p>
       <p>Status: {ticket.completed ? 'Completed' : 'Open'}</p>
-      <p>Assignee: {assignee ? assignee.name : `User ${ticket.assigneeId}`}</p>
+      <p>Assignee: {assignee ? assignee.name : 'Unassigned'}</p>
       <p>
         <button
           type="button"

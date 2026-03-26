@@ -73,7 +73,7 @@ export function createFakeTicketingApi({
 }: FakeApiOptions = {}): TicketingApi {
   const users = seedUsers.map(cloneUser);
   const tickets = seedTickets.map(cloneTicket);
-  let lastId = 2;
+  let lastId = Math.max(0, ...seedTickets.map((t) => t.id));
 
   const nextDelay = () => {
     const [minDelay, maxDelay] = delayRangeMs;

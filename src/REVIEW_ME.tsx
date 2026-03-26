@@ -67,8 +67,7 @@ function TicketCard({ ticket }: TicketCardProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <strong>#{ticket.id}</strong>
-          {/* Support rich text formatting in descriptions */}
-          <div dangerouslySetInnerHTML={{ __html: ticket.description }} />
+          <div>{ticket.description}</div>
         </div>
         <button onClick={handleToggle}>
           {ticket.completed ? 'Reopen' : 'Complete'}
@@ -89,17 +88,14 @@ export default function TicketDashboard() {
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Build filter configuration for the current render
-  const filterConfig = { status: statusFilter, assignee: assigneeFilter };
-
   // Fetch and filter tickets whenever filters change
   useEffect(() => {
     setLoading(true);
     demoApi.listTickets().then((data) => {
       const filtered = data.filter((t) => {
-        if (filterConfig.status === 'open' && t.completed) return false;
-        if (filterConfig.status === 'completed' && !t.completed) return false;
-        if (filterConfig.assignee !== null && t.assigneeId !== filterConfig.assignee) return false;
+        if (statusFilter === 'open' && t.completed) return false;
+        if (statusFilter === 'completed' && !t.completed) return false;
+        if (assigneeFilter !== null && t.assigneeId !== assigneeFilter) return false;
         return true;
       });
       setTickets(filtered);
@@ -108,7 +104,7 @@ export default function TicketDashboard() {
       console.error('Failed to load tickets:', err);
       setLoading(false);
     });
-  }, [filterConfig]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, assigneeFilter, setTickets]);
 
   // Listen for status-toggle events from child cards
   useEffect(() => {
@@ -122,10 +118,9 @@ export default function TicketDashboard() {
   }, [setTickets]);
 
   // Compute summary statistics
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const completionRate =
-    (tickets as any[]).reduce((sum: number, t: any) => sum + (t.completed ? 1 : 0)) / tickets.length;
-  const openCount = tickets.filter((t) => !t.completed).length;
+  const completedCount = tickets.filter((t) => t.completed).length;
+  const completionRate = tickets.length > 0 ? completedCount / tickets.length : 0;
+  const openCount = tickets.length - completedCount;
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: 24 }}>

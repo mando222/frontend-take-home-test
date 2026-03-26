@@ -25,6 +25,9 @@ export function TicketsListPage() {
     pollRef.current = window.setInterval(() => {
       refetch();
     }, 5000);
+    return () => {
+      window.clearInterval(pollRef.current);
+    };
   }, [refetch]);
 
   const handleToggleStatus = (ticketId: number, completed: boolean) => {
@@ -32,8 +35,12 @@ export function TicketsListPage() {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, completed } : t)),
     );
-    // Fire and forget — no rollback on failure, no error display
-    demoApi.updateTicketStatus(ticketId, completed).catch(() => {});
+    // Rollback on failure
+    demoApi.updateTicketStatus(ticketId, completed).catch(() => {
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, completed: !completed } : t)),
+      );
+    });
   };
 
   return (
