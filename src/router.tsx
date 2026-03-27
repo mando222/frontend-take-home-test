@@ -1,5 +1,6 @@
 import { createBrowserRouter, createMemoryRouter, RouteObject } from 'react-router-dom';
 import { App } from './App';
+import { GroupsPage } from './pages/GroupsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { TicketsListPage } from './pages/TicketsListPage';
 export function buildAppRoutes(): RouteObject[] {
@@ -15,6 +16,10 @@ export function buildAppRoutes(): RouteObject[] {
         {
           path: 'tickets/:ticketId',
           element: <TicketDetailPage />,
+        },
+        {
+          path: 'groups',
+          element: <GroupsPage />,
         },
       ],
     },

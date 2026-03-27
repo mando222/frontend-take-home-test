@@ -8,6 +8,7 @@ export function useTickets() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null);
+  const [groupFilter, setGroupFilter] = useState<number | 'ungrouped' | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const controllerRef = useRef<AbortController | null>(null);
@@ -30,7 +31,9 @@ export function useTickets() {
             ticket.description.toLowerCase().includes(search.toLowerCase());
           const matchesAssignee = assigneeFilter === null ||
             ticket.assigneeId === assigneeFilter;
-          return matchesSearch && matchesAssignee;
+          const matchesGroup = groupFilter === null ||
+            (groupFilter === 'ungrouped' ? ticket.groupId === null : ticket.groupId === groupFilter);
+          return matchesSearch && matchesAssignee && matchesGroup;
         });
         setTickets(filtered);
         setError(null);
@@ -49,7 +52,7 @@ export function useTickets() {
       });
 
     return () => controller.abort();
-  }, [search, assigneeFilter]);
+  }, [search, assigneeFilter, groupFilter]);
 
   const refetch = useCallback((showLoadingState: boolean = true) => {
     const controller = new AbortController();
@@ -66,7 +69,9 @@ export function useTickets() {
             ticket.description.toLowerCase().includes(search.toLowerCase());
           const matchesAssignee = assigneeFilter === null ||
             ticket.assigneeId === assigneeFilter;
-          return matchesSearch && matchesAssignee;
+          const matchesGroup = groupFilter === null ||
+            (groupFilter === 'ungrouped' ? ticket.groupId === null : ticket.groupId === groupFilter);
+          return matchesSearch && matchesAssignee && matchesGroup;
         });
         // Preserve optimistic state for tickets with pending mutations
         setTickets((prevTickets) => {
@@ -92,7 +97,7 @@ export function useTickets() {
           setLoading(false);
         }
       });
-  }, [search, assigneeFilter]);
+  }, [search, assigneeFilter, groupFilter]);
 
   const beginMutation = (ticketId: number) => {
     pendingMutationIdsRef.current.add(ticketId);
@@ -111,6 +116,8 @@ export function useTickets() {
     setSearch,
     assigneeFilter,
     setAssigneeFilter,
+    groupFilter,
+    setGroupFilter,
     refetch,
     retryCount,
     isInitialLoad,

@@ -1,14 +1,16 @@
 import { Link, useParams } from 'react-router-dom';
 import { useTicket } from '../hooks/useTicket';
 import { useUsers } from '../hooks/useUsers';
+import { useGroups } from '../hooks/useGroups';
 import { demoApi } from '../lib/fakeApi';
 import { useState } from 'react';
 
 export function TicketDetailPage() {
   const { ticketId } = useParams();
   const numericId = Number(ticketId);
-  const { ticket, loading, error, refetch } = useTicket(numericId);
+  const { ticket, setTicket, loading, error, refetch } = useTicket(numericId);
   const { users } = useUsers();
+  const { groups } = useGroups();
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
@@ -62,6 +64,24 @@ export function TicketDetailPage() {
     }
   };
 
+  const handleAssignGroup = (groupId: number | null) => {
+    const previousGroupId = ticket.groupId;
+    // Optimistically update the UI immediately
+    setTicket((prev) => prev ? { ...prev, groupId } : prev);
+    setMutating(true);
+    setMutationError(null);
+    demoApi.assignTicketToGroup(ticket.id, groupId)
+      .then(() => {
+        setMutating(false);
+      })
+      .catch((err) => {
+        // Rollback on failure
+        setTicket((prev) => prev ? { ...prev, groupId: previousGroupId } : prev);
+        setMutationError(err instanceof Error ? err.message : 'Failed to assign group');
+        setMutating(false);
+      });
+  };
+
   const handleToggleStatus = async () => {
     setMutating(true);
     setMutationError(null);
@@ -108,6 +128,24 @@ export function TicketDetailPage() {
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
+        <label>
+          Group{' '}
+          <select
+            value={ticket.groupId ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleAssignGroup(val ? Number(val) : null);
+            }}
+            disabled={mutating}
+          >
+            <option value="">Ungrouped</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
               </option>
             ))}
           </select>

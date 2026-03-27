@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTickets } from '../hooks/useTickets';
 import { useUsers } from '../hooks/useUsers';
+import { useGroups } from '../hooks/useGroups';
 import { TicketRow } from '../components/TicketRow';
 import { AddTicketForm } from '../components/AddTicketForm';
 import { Toast } from '../components/Toast';
@@ -16,12 +17,15 @@ export function TicketsListPage() {
     setSearch,
     assigneeFilter,
     setAssigneeFilter,
+    groupFilter,
+    setGroupFilter,
     refetch,
     retryCount,
     beginMutation,
     endMutation,
   } = useTickets();
   const { users } = useUsers();
+  const { groups } = useGroups();
   const pollRef = useRef<number | undefined>(undefined);
   const refetchRef = useRef(refetch);
   // Tracks the earliest timestamp at which the next poll is allowed to fire.
@@ -116,6 +120,26 @@ export function TicketsListPage() {
                 {user.name}
               </option>
             ))}
+          </select>
+        </label>{' '}
+        <label>
+          Group{' '}
+          <select
+            value={groupFilter === null ? '' : groupFilter === 'ungrouped' ? 'ungrouped' : String(groupFilter)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') setGroupFilter(null);
+              else if (val === 'ungrouped') setGroupFilter('ungrouped');
+              else setGroupFilter(Number(val));
+            }}
+          >
+            <option value="">All groups</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+            <option value="ungrouped">Ungrouped</option>
           </select>
         </label>
       </div>
