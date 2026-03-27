@@ -12,6 +12,7 @@ export function useTickets() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const controllerRef = useRef<AbortController | null>(null);
   const isInitialMount = useRef(true);
+  const pendingMutationIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,7 +68,16 @@ export function useTickets() {
             ticket.assigneeId === assigneeFilter;
           return matchesSearch && matchesAssignee;
         });
-        setTickets(filtered);
+        // Preserve optimistic state for tickets with pending mutations
+        setTickets((prevTickets) => {
+          return filtered.map((serverTicket) => {
+            if (pendingMutationIdsRef.current.has(serverTicket.id)) {
+              const optimistic = prevTickets.find((t) => t.id === serverTicket.id);
+              return optimistic ?? serverTicket;
+            }
+            return serverTicket;
+          });
+        });
         setError(null);
         setRetryCount(0);
         if (showLoadingState) {
@@ -84,6 +94,14 @@ export function useTickets() {
       });
   }, [search, assigneeFilter]);
 
+  const beginMutation = (ticketId: number) => {
+    pendingMutationIdsRef.current.add(ticketId);
+  };
+
+  const endMutation = (ticketId: number) => {
+    pendingMutationIdsRef.current.delete(ticketId);
+  };
+
   return {
     tickets,
     setTickets,
@@ -96,5 +114,7 @@ export function useTickets() {
     refetch,
     retryCount,
     isInitialLoad,
+    beginMutation,
+    endMutation,
   };
 }

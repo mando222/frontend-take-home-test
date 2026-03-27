@@ -244,4 +244,78 @@ describe('useTickets', () => {
     // loading must still be false after the filter resolves
     expect(result.current.loading).toBe(false);
   });
+
+  // Tests from PR #27 — verify optimistic update preservation during polling
+  it('preserves optimistic state for pending mutations during refetch', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Apply optimistic update for ticket id=1 (completed: false -> true)
+    act(() => {
+      result.current.setTickets((prev) =>
+        prev.map((t) => (t.id === 1 ? { ...t, completed: true } : t)),
+      );
+      result.current.beginMutation(1);
+    });
+
+    // Confirm optimistic state is applied
+    expect(result.current.tickets.find((t) => t.id === 1)?.completed).toBe(true);
+
+    // Trigger a refetch (server still has completed: false for ticket 1)
+    await act(async () => {
+      result.current.refetch();
+      await waitFor(() => expect(result.current.loading).toBe(false));
+    });
+
+    // Optimistic state must be preserved while mutation is pending
+    expect(result.current.tickets.find((t) => t.id === 1)?.completed).toBe(true);
+
+    // End mutation, then refetch — server value should now take effect
+    act(() => {
+      result.current.endMutation(1);
+    });
+
+    await act(async () => {
+      result.current.refetch();
+      await waitFor(() => expect(result.current.loading).toBe(false));
+    });
+
+    // After endMutation, server value (completed: false) is restored by polling
+    expect(result.current.tickets.find((t) => t.id === 1)?.completed).toBe(false);
+  });
+
+  it('continues updating non-mutating tickets during refetch with pending mutation', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Mark ticket 1 as mutating and apply optimistic update
+    act(() => {
+      result.current.setTickets((prev) =>
+        prev.map((t) => (t.id === 1 ? { ...t, completed: true } : t)),
+      );
+      result.current.beginMutation(1);
+    });
+
+    // Trigger refetch
+    await act(async () => {
+      result.current.refetch();
+      await waitFor(() => expect(result.current.loading).toBe(false));
+    });
+
+    // Ticket 1 keeps optimistic state
+    expect(result.current.tickets.find((t) => t.id === 1)?.completed).toBe(true);
+    // Other tickets receive normal server values
+    expect(result.current.tickets.find((t) => t.id === 2)).toBeDefined();
+    expect(result.current.tickets.find((t) => t.id === 3)).toBeDefined();
+
+    act(() => {
+      result.current.endMutation(1);
+    });
+  });
 });
