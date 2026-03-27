@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTickets } from '../hooks/useTickets';
 import { useUsers } from '../hooks/useUsers';
 import { TicketRow } from '../components/TicketRow';
@@ -25,15 +25,24 @@ export function TicketsListPage() {
     pollRef.current = window.setInterval(() => {
       refetch();
     }, 5000);
+    return () => window.clearInterval(pollRef.current);
   }, [refetch]);
+
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   const handleToggleStatus = (ticketId: number, completed: boolean) => {
     // Optimistically update the UI immediately
     setTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, completed } : t)),
     );
-    // Fire and forget — no rollback on failure, no error display
-    demoApi.updateTicketStatus(ticketId, completed).catch(() => {});
+    setToggleError(null);
+    demoApi.updateTicketStatus(ticketId, completed).catch(() => {
+      // Rollback on failure
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, completed: !completed } : t)),
+      );
+      setToggleError(`Failed to update ticket #${ticketId}. Please try again.`);
+    });
   };
 
   return (
@@ -74,6 +83,7 @@ export function TicketsListPage() {
 
       {loading && tickets.length === 0 && <p>Loading tickets...</p>}
       {error && <p role="alert">Error: {error}</p>}
+      {toggleError && <p role="alert">Error: {toggleError}</p>}
 
       {!loading && tickets.length === 0 && (
         <p>No tickets match your filters.</p>
