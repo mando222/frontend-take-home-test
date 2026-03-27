@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Ticket } from '../lib/types';
 import { demoApi } from '../lib/fakeApi';
 
@@ -44,7 +44,7 @@ export function useTickets() {
     return () => controller.abort();
   }, [search, assigneeFilter]);
 
-  const refetch = (showLoadingState: boolean = true) => {
+  const refetch = useCallback((showLoadingState: boolean = true) => {
     const controller = new AbortController();
     controllerRef.current = controller;
 
@@ -74,7 +74,7 @@ export function useTickets() {
           setLoading(false);
         }
       });
-  };
+  }, [search, assigneeFilter]);
 
   return {
     tickets,
