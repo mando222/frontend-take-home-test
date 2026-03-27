@@ -8,6 +8,8 @@ export function useTickets() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const controllerRef = useRef<AbortController | null>(null);
   const isInitialMount = useRef(true);
 
@@ -18,7 +20,6 @@ export function useTickets() {
     if (isInitialMount.current) {
       setLoading(true);
     }
-    setError(null);
 
     demoApi.listTickets({ signal: controller.signal })
       .then((data) => {
@@ -31,13 +32,18 @@ export function useTickets() {
           return matchesSearch && matchesAssignee;
         });
         setTickets(filtered);
+        setError(null);
+        setRetryCount(0);
         setLoading(false);
+        setIsInitialLoad(false);
         isInitialMount.current = false;
       })
       .catch((err) => {
         if (err.name === 'AbortError') return;
         setError(err.message);
+        setRetryCount((prev) => prev + 1);
         setLoading(false);
+        setIsInitialLoad(false);
         isInitialMount.current = false;
       });
 
@@ -51,7 +57,6 @@ export function useTickets() {
     if (showLoadingState) {
       setLoading(true);
     }
-    setError(null);
 
     demoApi.listTickets({ signal: controller.signal })
       .then((data) => {
@@ -63,6 +68,8 @@ export function useTickets() {
           return matchesSearch && matchesAssignee;
         });
         setTickets(filtered);
+        setError(null);
+        setRetryCount(0);
         if (showLoadingState) {
           setLoading(false);
         }
@@ -70,6 +77,7 @@ export function useTickets() {
       .catch((err) => {
         if (err.name === 'AbortError') return;
         setError(err.message);
+        setRetryCount((prev) => prev + 1);
         if (showLoadingState) {
           setLoading(false);
         }
@@ -86,5 +94,7 @@ export function useTickets() {
     assigneeFilter,
     setAssigneeFilter,
     refetch,
+    retryCount,
+    isInitialLoad,
   };
 }
