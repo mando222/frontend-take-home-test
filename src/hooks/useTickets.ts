@@ -39,11 +39,13 @@ export function useTickets() {
     return () => controller.abort();
   }, [search, assigneeFilter]);
 
-  const refetch = () => {
+  const refetch = (showLoadingState: boolean = true) => {
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    setLoading(true);
+    if (showLoadingState) {
+      setLoading(true);
+    }
     setError(null);
 
     demoApi.listTickets({ signal: controller.signal })
@@ -56,12 +58,16 @@ export function useTickets() {
           return matchesSearch && matchesAssignee;
         });
         setTickets(filtered);
-        setLoading(false);
+        if (showLoadingState) {
+          setLoading(false);
+        }
       })
       .catch((err) => {
         if (err.name === 'AbortError') return;
         setError(err.message);
-        setLoading(false);
+        if (showLoadingState) {
+          setLoading(false);
+        }
       });
   };
 
