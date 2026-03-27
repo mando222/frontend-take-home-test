@@ -42,7 +42,16 @@ describe('useTicket', () => {
       { initialProps: { id: 1 } },
     );
 
+    // Wait for ticket 1 to load
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
     rerender({ id: 2 });
+
+    // Immediately after ticketId changes, ticket should still hold the previous value (not null)
+    expect(result.current.ticket?.id).toBe(1);
+    expect(result.current.loading).toBe(true);
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -50,5 +59,50 @@ describe('useTicket', () => {
 
     // Should show ticket 2, not ticket 1
     expect(result.current.ticket?.id).toBe(2);
+  });
+
+  it('retains previous ticket while new ticket is loading', async () => {
+    const { result, rerender } = renderHook(
+      ({ id }) => useTicket(id),
+      { initialProps: { id: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.ticket?.id).toBe(1);
+    });
+
+    rerender({ id: 2 });
+
+    // ticket should not be null during the in-flight period
+    expect(result.current.ticket).not.toBeNull();
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.ticket?.id).toBe(2);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('clears stale ticket and shows error when new ticket request fails', async () => {
+    const { result, rerender } = renderHook(
+      ({ id }) => useTicket(id),
+      { initialProps: { id: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.ticket?.id).toBe(1);
+    });
+
+    // Navigate to a non-existent ticket
+    rerender({ id: 999 });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBe('Ticket not found');
+    expect(result.current.ticket).toBeNull();
   });
 });

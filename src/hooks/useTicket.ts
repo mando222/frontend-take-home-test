@@ -12,7 +12,6 @@ export function useTicket(ticketId: number) {
 
     setLoading(true);
     setError(null);
-    setTicket(null);
 
     demoApi.getTicket(ticketId, { signal: controller.signal })
       .then((data) => {
@@ -22,6 +21,7 @@ export function useTicket(ticketId: number) {
       .catch((err) => {
         if (err.name === 'AbortError') return;
         setError(err.message);
+        setTicket(null);
         setLoading(false);
       });
 
