@@ -25,8 +25,9 @@ export function createAppRouter() {
   return createBrowserRouter(buildAppRoutes());
 }
 
-export function createTestRouter(initialEntries: string[]) {
+export function createTestRouter(initialEntries: string[], initialIndex?: number) {
   return createMemoryRouter(buildAppRoutes(), {
     initialEntries,
+    initialIndex,
   });
 }
