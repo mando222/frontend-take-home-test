@@ -78,6 +78,21 @@ describe('useTickets', () => {
     });
   });
 
+  it('refetch has stable identity across re-renders when search and assigneeFilter do not change', async () => {
+    const { result, rerender } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const refetchBefore = result.current.refetch;
+
+    // Re-render without changing search or assigneeFilter
+    rerender();
+
+    expect(result.current.refetch).toBe(refetchBefore);
+  });
+
   it('does not set loading=true when filtering already-loaded tickets', async () => {
     const { result } = renderHook(() => useTickets());
 

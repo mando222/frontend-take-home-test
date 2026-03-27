@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTickets } from '../hooks/useTickets';
 import { useUsers } from '../hooks/useUsers';
 import { TicketRow } from '../components/TicketRow';
@@ -19,14 +19,19 @@ export function TicketsListPage() {
   } = useTickets();
   const { users } = useUsers();
   const pollRef = useRef<number | undefined>(undefined);
+  const refetchRef = useRef(refetch);
+
+  useLayoutEffect(() => {
+    refetchRef.current = refetch;
+  });
 
   // Poll for fresh data every 5 seconds
   useEffect(() => {
     pollRef.current = window.setInterval(() => {
-      refetch(false);
+      refetchRef.current(false);
     }, 5000);
     return () => window.clearInterval(pollRef.current);
-  }, [refetch]);
+  }, []);
 
   const [toggleError, setToggleError] = useState<string | null>(null);
 
