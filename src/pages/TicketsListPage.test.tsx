@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import { createTestRouter } from '../router';
+import * as useTicketsModule from '../hooks/useTickets';
 
 vi.mock('../lib/fakeApi', async () => {
   const actual = await vi.importActual<typeof import('../lib/fakeApi')>('../lib/fakeApi');
@@ -80,5 +81,47 @@ describe('TicketsListPage', () => {
     });
 
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('TicketsListPage — polling error behaviour', () => {
+  const mockTickets = [
+    { id: 1, description: 'Install a monitor arm', assigneeId: 111, completed: false },
+    { id: 2, description: 'Move the desk to the new location', assigneeId: 222, completed: false },
+  ];
+
+  beforeEach(() => {
+    vi.spyOn(useTicketsModule, 'useTickets').mockReturnValue({
+      tickets: mockTickets,
+      setTickets: vi.fn(),
+      loading: false,
+      error: 'Fake API request failed',
+      search: '',
+      setSearch: vi.fn(),
+      assigneeFilter: null,
+      setAssigneeFilter: vi.fn(),
+      refetch: vi.fn(),
+      retryCount: 1,
+      isInitialLoad: false,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('ticket list remains visible when error occurs during polling', () => {
+    const router = createTestRouter(['/']);
+    render(<RouterProvider router={router} />);
+
+    // The ticket list (<ul>) must still be in the document
+    expect(screen.getByRole('list')).toBeInTheDocument();
+
+    // Individual ticket rows must still be visible
+    expect(screen.getByText('Install a monitor arm')).toBeInTheDocument();
+    expect(screen.getByText('Move the desk to the new location')).toBeInTheDocument();
+
+    // A transient polling error must NOT replace the list with a blocking alert paragraph
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

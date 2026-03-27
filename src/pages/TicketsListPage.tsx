@@ -3,6 +3,7 @@ import { useTickets } from '../hooks/useTickets';
 import { useUsers } from '../hooks/useUsers';
 import { TicketRow } from '../components/TicketRow';
 import { AddTicketForm } from '../components/AddTicketForm';
+import { Toast } from '../components/Toast';
 import { demoApi } from '../lib/fakeApi';
 
 export function TicketsListPage() {
@@ -16,19 +17,38 @@ export function TicketsListPage() {
     assigneeFilter,
     setAssigneeFilter,
     refetch,
+    retryCount,
   } = useTickets();
   const { users } = useUsers();
   const pollRef = useRef<number | undefined>(undefined);
   const refetchRef = useRef(refetch);
+  // Tracks the earliest timestamp at which the next poll is allowed to fire.
+  // Set to a future time after each failure to implement exponential backoff.
+  const nextPollTimeRef = useRef<number>(0);
 
   useLayoutEffect(() => {
     refetchRef.current = refetch;
   });
 
-  // Poll for fresh data every 5 seconds
+  // Recompute the backoff window whenever the consecutive failure count changes.
+  // Delay doubles with each failure: 5 s, 10 s, 20 s … capped at 40 s.
+  useEffect(() => {
+    if (retryCount > 0) {
+      const backoffMs = Math.min(5000 * Math.pow(2, retryCount - 1), 40000);
+      nextPollTimeRef.current = Date.now() + backoffMs;
+    } else {
+      nextPollTimeRef.current = 0;
+    }
+  }, [retryCount]);
+
+  // Poll for fresh data every 5 seconds, skipping ticks that fall inside the
+  // backoff window so that repeated failures don't hammer the API.
   useEffect(() => {
     pollRef.current = window.setInterval(() => {
-      refetchRef.current(false);
+      const now = Date.now();
+      if (now >= nextPollTimeRef.current) {
+        refetchRef.current(false);
+      }
     }, 5000);
     return () => window.clearInterval(pollRef.current);
   }, []);
@@ -49,6 +69,12 @@ export function TicketsListPage() {
       setToggleError(`Failed to update ticket #${ticketId}. Please try again.`);
     });
   };
+
+  // When the initial load fails (no data yet), show a blocking error.
+  // When a polling call fails but we already have data, show a non-intrusive
+  // toast so the ticket list remains fully visible.
+  const showBlockingError = error !== null && tickets.length === 0 && !loading;
+  const showPollingToast = error !== null && tickets.length > 0;
 
   return (
     <section>
@@ -87,7 +113,7 @@ export function TicketsListPage() {
       </div>
 
       {loading && tickets.length === 0 && <p>Loading tickets...</p>}
-      {error && <p role="alert">Error: {error}</p>}
+      {showBlockingError && <p role="alert">Error: {error}</p>}
       {toggleError && <p role="alert">Error: {toggleError}</p>}
 
       {!loading && tickets.length === 0 && (
@@ -104,6 +130,8 @@ export function TicketsListPage() {
           />
         ))}
       </ul>
+
+      {showPollingToast && <Toast message={`Sync error: ${error}`} />}
     </section>
   );
 }

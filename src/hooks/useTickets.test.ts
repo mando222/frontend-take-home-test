@@ -78,6 +78,133 @@ describe('useTickets', () => {
     });
   });
 
+  it('calling refetch does not immediately clear existing error', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Make API fail for the first refetch
+    const { demoApi: api } = await import('../lib/fakeApi');
+    const originalListTickets = api.listTickets.bind(api);
+    api.listTickets = () => Promise.reject(new Error('Transient error'));
+
+    // Trigger a failing refetch to set error state
+    act(() => {
+      result.current.refetch(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Transient error');
+    });
+
+    // Restore successful API, then call refetch — this refetch will succeed eventually
+    api.listTickets = originalListTickets;
+
+    act(() => {
+      result.current.refetch(false);
+    });
+
+    // CRITICAL: error must NOT be cleared immediately when refetch starts —
+    // it should remain until the in-flight request completes successfully
+    expect(result.current.error).toBe('Transient error');
+
+    // Eventually the successful refetch clears the error
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
+    });
+  });
+
+  it('does not clear error until next request succeeds', async () => {
+    const { result: hookResult } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(hookResult.current.loading).toBe(false);
+    });
+
+    // Mock a failing API by overriding demoApi temporarily
+    const { demoApi: api } = await import('../lib/fakeApi');
+    const originalListTickets = api.listTickets.bind(api);
+    api.listTickets = () => Promise.reject(new Error('Network error'));
+
+    // Trigger refetch (simulating a polling call)
+    act(() => {
+      hookResult.current.refetch(false);
+    });
+
+    // Error should appear after failure
+    await waitFor(() => {
+      expect(hookResult.current.error).toBe('Network error');
+    });
+
+    // Restore successful API
+    api.listTickets = originalListTickets;
+
+    // Error should NOT be cleared immediately when another refetch starts
+    act(() => {
+      hookResult.current.refetch(false);
+    });
+
+    // Error should only clear after success
+    await waitFor(() => {
+      expect(hookResult.current.error).toBeNull();
+    });
+  });
+
+  it('increments retryCount on failure and resets to 0 on success', async () => {
+    const { result: hookResult } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(hookResult.current.loading).toBe(false);
+    });
+
+    expect(hookResult.current.retryCount).toBe(0);
+
+    const { demoApi: api } = await import('../lib/fakeApi');
+    const originalListTickets = api.listTickets.bind(api);
+    api.listTickets = () => Promise.reject(new Error('Network error'));
+
+    act(() => {
+      hookResult.current.refetch(false);
+    });
+
+    await waitFor(() => {
+      expect(hookResult.current.retryCount).toBe(1);
+    });
+
+    act(() => {
+      hookResult.current.refetch(false);
+    });
+
+    await waitFor(() => {
+      expect(hookResult.current.retryCount).toBe(2);
+    });
+
+    // Restore and refetch successfully — retryCount should reset
+    api.listTickets = originalListTickets;
+
+    act(() => {
+      hookResult.current.refetch(false);
+    });
+
+    await waitFor(() => {
+      expect(hookResult.current.retryCount).toBe(0);
+    });
+  });
+
+  it('exposes isInitialLoad as false after first fetch completes', async () => {
+    const { result: hookResult } = renderHook(() => useTickets());
+
+    expect(hookResult.current.isInitialLoad).toBe(true);
+
+    await waitFor(() => {
+      expect(hookResult.current.loading).toBe(false);
+    });
+
+    expect(hookResult.current.isInitialLoad).toBe(false);
+  });
+
   it('refetch has stable identity across re-renders when search and assigneeFilter do not change', async () => {
     const { result, rerender } = renderHook(() => useTickets());
 
