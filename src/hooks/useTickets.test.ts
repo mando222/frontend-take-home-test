@@ -77,4 +77,29 @@ describe('useTickets', () => {
       expect(result.current.tickets[0].assigneeId).toBe(111);
     });
   });
+
+  it('does not set loading=true when filtering already-loaded tickets', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    // Wait for initial load to complete
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Change search to a string that matches no tickets
+    act(() => {
+      result.current.setSearch('xyzzy-no-match-string');
+    });
+
+    // loading must never flip back to true during or after the filter change
+    expect(result.current.loading).toBe(false);
+
+    // Eventually the hook resolves to an empty ticket list
+    await waitFor(() => {
+      expect(result.current.tickets).toHaveLength(0);
+    });
+
+    // loading must still be false after the filter resolves
+    expect(result.current.loading).toBe(false);
+  });
 });

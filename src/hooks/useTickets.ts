@@ -9,12 +9,15 @@ export function useTickets() {
   const [search, setSearch] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    setLoading(true);
+    if (isInitialMount.current) {
+      setLoading(true);
+    }
     setError(null);
 
     demoApi.listTickets({ signal: controller.signal })
@@ -29,11 +32,13 @@ export function useTickets() {
         });
         setTickets(filtered);
         setLoading(false);
+        isInitialMount.current = false;
       })
       .catch((err) => {
         if (err.name === 'AbortError') return;
         setError(err.message);
         setLoading(false);
+        isInitialMount.current = false;
       });
 
     return () => controller.abort();

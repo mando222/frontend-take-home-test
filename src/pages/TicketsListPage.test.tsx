@@ -62,4 +62,23 @@ describe('TicketsListPage', () => {
       expect(screen.queryByText('Move the desk to the new location')).not.toBeInTheDocument();
     });
   });
+
+  it('does not show loading state when filtering to no results', async () => {
+    const user = userEvent.setup();
+    const router = createTestRouter(['/']);
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Install a monitor arm')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/search/i);
+    await user.type(searchInput, 'nonexistent-keyword-xyz');
+
+    await waitFor(() => {
+      expect(screen.getByText('No tickets match your filters.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+  });
 });
