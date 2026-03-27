@@ -23,7 +23,7 @@ export function TicketsListPage() {
   // Poll for fresh data every 5 seconds
   useEffect(() => {
     pollRef.current = window.setInterval(() => {
-      refetch();
+      refetch(false);
     }, 5000);
     return () => window.clearInterval(pollRef.current);
   }, [refetch]);

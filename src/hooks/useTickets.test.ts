@@ -41,6 +41,26 @@ describe('useTickets', () => {
     });
   });
 
+  it('does not set loading state when refetch is called with showLoadingState=false', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    act(() => {
+      result.current.refetch(false);
+    });
+
+    expect(result.current.loading).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current.tickets).toHaveLength(3);
+    });
+
+    expect(result.current.loading).toBe(false);
+  });
+
   it('filters tickets by assigneeId', async () => {
     const { result } = renderHook(() => useTickets());
 
