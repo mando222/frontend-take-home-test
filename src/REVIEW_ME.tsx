@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Ticket } from './lib/types';
 import { demoApi } from './lib/fakeApi';
+import { useUsers } from './hooks/useUsers';
 
 // ---------------------------------------------------------------------------
 // Event bus for decoupled component communication
@@ -85,6 +86,7 @@ function TicketCard({ ticket }: TicketCardProps) {
 export default function TicketDashboard() {
   const { tickets, setTickets, isModalOpen, setModalOpen, activeTab, setActiveTab } =
     useTicketData();
+  const { users, loading: usersLoading } = useUsers();
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'completed'>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,7 +126,7 @@ export default function TicketDashboard() {
   // Compute summary statistics
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const completionRate =
-    (tickets as any[]).reduce((sum: number, t: any) => sum + (t.completed ? 1 : 0)) / tickets.length;
+    (tickets as any[]).reduce((sum: number, t: any) => sum + (t.completed ? 1 : 0), 0) / tickets.length;
   const openCount = tickets.filter((t) => !t.completed).length;
 
   return (
@@ -155,10 +157,14 @@ export default function TicketDashboard() {
         <select
           value={assigneeFilter ?? ''}
           onChange={(e) => setAssigneeFilter(e.target.value ? Number(e.target.value) : null)}
+          disabled={usersLoading}
         >
           <option value="">Any assignee</option>
-          <option value="111">Victor</option>
-          <option value="222">Priya</option>
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.name}
+            </option>
+          ))}
         </select>
       </div>
 
