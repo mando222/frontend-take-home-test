@@ -318,4 +318,67 @@ describe('useTickets', () => {
       result.current.endMutation(1);
     });
   });
+
+  // Tests from PR #26 — verify refetch uses current filter values
+  it('refetch uses current filter values when called asynchronously', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      result.current.setSearch('monitor');
+    });
+
+    await waitFor(() => {
+      expect(result.current.tickets).toHaveLength(1);
+      expect(result.current.tickets[0].description).toContain('monitor');
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.tickets).toHaveLength(1);
+      expect(result.current.tickets[0].description).toContain('monitor');
+    });
+  });
+
+  it('refetch reference updates when search changes', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const ref1 = result.current.refetch;
+
+    act(() => {
+      result.current.setSearch('new');
+    });
+
+    await waitFor(() => {
+      expect(result.current.refetch).not.toBe(ref1);
+    });
+  });
+
+  it('refetch reference updates when assigneeFilter changes', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const ref1 = result.current.refetch;
+
+    act(() => {
+      result.current.setAssigneeFilter(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.refetch).not.toBe(ref1);
+    });
+  });
 });
