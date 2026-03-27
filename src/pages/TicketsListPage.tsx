@@ -18,6 +18,8 @@ export function TicketsListPage() {
     setAssigneeFilter,
     refetch,
     retryCount,
+    beginMutation,
+    endMutation,
   } = useTickets();
   const { users } = useUsers();
   const pollRef = useRef<number | undefined>(undefined);
@@ -61,13 +63,19 @@ export function TicketsListPage() {
       prev.map((t) => (t.id === ticketId ? { ...t, completed } : t)),
     );
     setToggleError(null);
-    demoApi.updateTicketStatus(ticketId, completed).catch(() => {
-      // Rollback on failure
-      setTickets((prev) =>
-        prev.map((t) => (t.id === ticketId ? { ...t, completed: !completed } : t)),
-      );
-      setToggleError(`Failed to update ticket #${ticketId}. Please try again.`);
-    });
+    beginMutation(ticketId);
+    demoApi.updateTicketStatus(ticketId, completed)
+      .then(() => {
+        endMutation(ticketId);
+      })
+      .catch(() => {
+        // Rollback on failure
+        setTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? { ...t, completed: !completed } : t)),
+        );
+        setToggleError(`Failed to update ticket #${ticketId}. Please try again.`);
+        endMutation(ticketId);
+      });
   };
 
   // When the initial load fails (no data yet), show a blocking error.

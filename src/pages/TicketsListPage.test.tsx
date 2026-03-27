@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import { createTestRouter } from '../router';
 import * as useTicketsModule from '../hooks/useTickets';
+import { demoApi } from '../lib/fakeApi';
 
 vi.mock('../lib/fakeApi', async () => {
   const actual = await vi.importActual<typeof import('../lib/fakeApi')>('../lib/fakeApi');
@@ -12,6 +13,7 @@ vi.mock('../lib/fakeApi', async () => {
   });
   return { ...actual, demoApi: api };
 });
+
 
 describe('TicketsListPage', () => {
   it('renders ticket list after loading', async () => {
@@ -82,9 +84,55 @@ describe('TicketsListPage', () => {
 
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
   });
+
+  it('does not revert optimistic status update when a polling refetch fires during a pending mutation', async () => {
+    // Only fake setInterval/clearInterval so the polling interval is controllable
+    // while the fakeApi's setTimeout-based delays fire naturally with real timers.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+
+    try {
+      // Keep the mutation in-flight indefinitely so we can verify state during the window
+      vi.spyOn(demoApi, 'updateTicketStatus').mockReturnValueOnce(new Promise(() => {}));
+
+      const user = userEvent.setup();
+      const router = createTestRouter(['/']);
+      render(<RouterProvider router={router} />);
+
+      // Wait for initial ticket data to load (fakeApi uses real 0ms setTimeout)
+      await waitFor(() => {
+        expect(screen.getByText('Install a monitor arm')).toBeInTheDocument();
+      });
+
+      // Ticket 1 ("Install a monitor arm") is open — its button reads "Complete"
+      const monitorLi = screen.getByText('Install a monitor arm').closest('li')!;
+      await user.click(within(monitorLi).getByRole('button', { name: /^complete$/i }));
+
+      // Optimistic update applied immediately — button should now read "Reopen"
+      expect(within(monitorLi).getByRole('button', { name: /^reopen$/i })).toBeInTheDocument();
+
+      // Advance the fake interval clock by 5 seconds to fire the polling setInterval callback.
+      // This triggers refetch() → demoApi.listTickets(), which returns stale data
+      // (completed: false for ticket 1) via a real 0ms setTimeout.
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // Wait for the polling refetch to complete and React to re-render.
+      // With the fix, the functional setTickets updater detects ticket 1 has a pending
+      // mutation and preserves its optimistic value instead of applying the stale response.
+      await waitFor(() => {
+        expect(within(monitorLi).getByRole('button', { name: /^reopen$/i })).toBeInTheDocument();
+      });
+
+      // Unaffected tickets (no pending mutation) still receive the latest poll data
+      expect(screen.getByText('Move the desk to the new location')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
-describe('TicketsListPage — polling error behaviour', () => {
+describe('TicketsListPage ��� polling error behaviour', () => {
   const mockTickets = [
     { id: 1, description: 'Install a monitor arm', assigneeId: 111, completed: false },
     { id: 2, description: 'Move the desk to the new location', assigneeId: 222, completed: false },
@@ -103,6 +151,8 @@ describe('TicketsListPage — polling error behaviour', () => {
       refetch: vi.fn(),
       retryCount: 1,
       isInitialLoad: false,
+      beginMutation: vi.fn(),
+      endMutation: vi.fn(),
     });
   });
 
