@@ -381,4 +381,55 @@ describe('useTickets', () => {
       expect(result.current.refetch).not.toBe(ref1);
     });
   });
+
+  it('filters tickets by groupId when groupFilter is set', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setGroupFilter(101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.tickets).toHaveLength(1);
+      expect(result.current.tickets[0].groupId).toBe(101);
+    });
+  });
+
+  it('filters tickets to ungrouped when groupFilter is "ungrouped"', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setGroupFilter('ungrouped');
+    });
+
+    await waitFor(() => {
+      expect(result.current.tickets.every((t) => t.groupId === null)).toBe(true);
+    });
+  });
+
+  it('refetch reference updates when groupFilter changes', async () => {
+    const { result } = renderHook(() => useTickets());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const ref1 = result.current.refetch;
+
+    act(() => {
+      result.current.setGroupFilter(101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.refetch).not.toBe(ref1);
+    });
+  });
 });

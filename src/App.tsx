@@ -7,6 +7,7 @@ export function App() {
         <h1>Ticketing App Starter</h1>
         <nav aria-label="Primary">
           <NavLink to="/">Tickets</NavLink>
+          <NavLink to="/groups">Groups</NavLink>
         </nav>
       </header>
 

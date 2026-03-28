@@ -15,6 +15,10 @@ vi.mock('../lib/fakeApi', async () => {
 });
 
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('TicketsListPage', () => {
   it('renders ticket list after loading', async () => {
     const router = createTestRouter(['/']);
@@ -85,6 +89,62 @@ describe('TicketsListPage', () => {
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
   });
 
+  it('renders a group filter dropdown with "All groups" and seeded group names', async () => {
+    const router = createTestRouter(['/']);
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Install a monitor arm')).toBeInTheDocument();
+    });
+
+    const groupSelect = screen.getByRole('combobox', { name: /group/i });
+    expect(groupSelect).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /all groups/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Frontend' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Backend' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'DevOps' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Ungrouped' })).toBeInTheDocument();
+  });
+
+  it('filters displayed tickets to those with the selected groupId', async () => {
+    const user = userEvent.setup();
+    const router = createTestRouter(['/']);
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Install a monitor arm')).toBeInTheDocument();
+    });
+
+    // Select "Frontend" (id 101) — ticket 1 is in Frontend, ticket 2 in Backend, ticket 3 ungrouped
+    const groupSelect = screen.getByRole('combobox', { name: /group/i });
+    await user.selectOptions(groupSelect, '101');
+
+    await waitFor(() => {
+      expect(screen.getByText('Install a monitor arm')).toBeInTheDocument();
+      expect(screen.queryByText('Move the desk to the new location')).not.toBeInTheDocument();
+      expect(screen.queryByText('Replace the office keyboard')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows only ungrouped tickets when "Ungrouped" is selected', async () => {
+    const user = userEvent.setup();
+    const router = createTestRouter(['/']);
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Replace the office keyboard')).toBeInTheDocument();
+    });
+
+    const groupSelect = screen.getByRole('combobox', { name: /group/i });
+    await user.selectOptions(groupSelect, 'ungrouped');
+
+    await waitFor(() => {
+      expect(screen.getByText('Replace the office keyboard')).toBeInTheDocument();
+      expect(screen.queryByText('Install a monitor arm')).not.toBeInTheDocument();
+      expect(screen.queryByText('Move the desk to the new location')).not.toBeInTheDocument();
+    });
+  });
+
   it('does not revert optimistic status update when a polling refetch fires during a pending mutation', async () => {
     // Only fake setInterval/clearInterval so the polling interval is controllable
     // while the fakeApi's setTimeout-based delays fire naturally with real timers.
@@ -134,8 +194,8 @@ describe('TicketsListPage', () => {
 
 describe('TicketsListPage ��� polling error behaviour', () => {
   const mockTickets = [
-    { id: 1, description: 'Install a monitor arm', assigneeId: 111, completed: false },
-    { id: 2, description: 'Move the desk to the new location', assigneeId: 222, completed: false },
+    { id: 1, description: 'Install a monitor arm', assigneeId: 111, completed: false, groupId: 101 },
+    { id: 2, description: 'Move the desk to the new location', assigneeId: 222, completed: false, groupId: 102 },
   ];
 
   beforeEach(() => {
@@ -148,6 +208,8 @@ describe('TicketsListPage ��� polling error behaviour', () => {
       setSearch: vi.fn(),
       assigneeFilter: null,
       setAssigneeFilter: vi.fn(),
+      groupFilter: null,
+      setGroupFilter: vi.fn(),
       refetch: vi.fn(),
       retryCount: 1,
       isInitialLoad: false,

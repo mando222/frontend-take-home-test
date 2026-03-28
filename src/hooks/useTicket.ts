@@ -42,5 +42,5 @@ export function useTicket(ticketId: number) {
       });
   };
 
-  return { ticket, loading, error, refetch };
+  return { ticket, setTicket, loading, error, refetch };
 }

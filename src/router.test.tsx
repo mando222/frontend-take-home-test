@@ -32,5 +32,19 @@ describe('app routing', () => {
     });
   });
 
+  it('renders the groups route with a Groups heading', async () => {
+    const router = createTestRouter(['/groups']);
+    render(<RouterProvider router={router} />);
 
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Groups' })).toBeInTheDocument();
+    });
+  });
+
+  it('renders a Groups navigation link in the app header', () => {
+    const router = createTestRouter(['/']);
+    render(<RouterProvider router={router} />);
+
+    expect(screen.getByRole('link', { name: 'Groups' })).toBeInTheDocument();
+  });
 });
